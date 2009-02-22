@@ -34,7 +34,7 @@
 #define wrap_y(a)	(((a)+num_blocks_y)%num_blocks_y)
 #define calc_pe(a, b)	(a*num_blocks_y + b)
 
-#define MAX_ITER        10
+#define MAX_ITER        100
 #define LEFT            1
 #define RIGHT           2
 #define TOP             3
@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
   /* allocate two dimensional arrays */
   temperature = new double*[blockDimX+2];
   new_temperature = new double*[blockDimX+2];
-  for (int i=0; i<blockDimX+2; i++) {
+  for (i=0; i<blockDimX+2; i++) {
     temperature[i] = new double[blockDimY+2];
     new_temperature[i] = new double[blockDimY+2];
   }
@@ -112,17 +112,17 @@ int main(int argc, char **argv) {
 
   // boundary conditions
   if(myCol == 0 && myRow < num_blocks_x/2) {
-    for(int i=1; i<=blockDimX; i++)
+    for(i=1; i<=blockDimX; i++)
       temperature[i][1] = 1.0;
   }
 
-  if(myRow == arrayDimX-1 && myCol >= num_blocks_y/2) {
-    for(int j=1; j<=blockDimY; j++)
+  if(myRow == num_blocks_x-1 && myCol >= num_blocks_y/2) {
+    for(j=1; j<=blockDimY; j++)
       temperature[blockDimX][j] = 0.0;
   }
 
   startTime = MPI_Wtime();
-  while(error > 0.001 /*&& iterations < MAX_ITER*/) {
+  while(error > 0.001 && iterations < MAX_ITER) {
     iterations++;
     /* Copy left column and right column into temporary arrays */
     double *left_edge_out  = new double[blockDimX];
@@ -152,16 +152,16 @@ int main(int argc, char **argv) {
     for(i=0; i<blockDimX; i++)
       temperature[i+1][0] = left_edge_in[i];
 
-    for(int i=1; i<blockDimX+1; i++) {
-      for(int j=1; j<blockDimY+1; j++) {
+    for(i=1; i<blockDimX+1; i++) {
+      for(j=1; j<blockDimY+1; j++) {
         /* update my value based on the surrounding values */
         new_temperature[i][j] = (temperature[i-1][j]+temperature[i+1][j]+temperature[i][j-1]+temperature[i][j+1]+temperature[i][j]) * 0.2;
       }
     }
 
     max_error = error = 0.0;
-    for(int i=1; i<blockDimX+1; i++) {
-      for(int j=1; j<blockDimY+1; j++) {
+    for(i=1; i<blockDimX+1; i++) {
+      for(j=1; j<blockDimY+1; j++) {
 	error = fabs(new_temperature[i][j] - temperature[i][j]);
 	if(error > max_error)
 	  max_error = error;
@@ -175,16 +175,16 @@ int main(int argc, char **argv) {
 
     // boundary conditions
     if(myCol == 0 && myRow < num_blocks_x/2) {
-      for(int i=1; i<=blockDimX; i++)
+      for(i=1; i<=blockDimX; i++)
 	temperature[i][1] = 1.0;
     }
 
-    if(myRow == arrayDimX-1 && myCol >= num_blocks_y/2) {
-      for(int j=1; j<=blockDimY; j++)
+    if(myRow == num_blocks_x-1 && myCol >= num_blocks_y/2) {
+      for(j=1; j<=blockDimY; j++)
 	temperature[blockDimX][j] = 0.0;
     }
 
-    // if(myRank == 0) printf("Iteration %d %f %f %f\n", iterations, max_error, temperature[0][1], temperature[0][2]);
+    // if(myRank == 0) printf("Iteration %d %f %f %f\n", iterations, max_error, temperature[1][1], temperature[1][2]);
     MPI_Allreduce(&max_error, &error, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
   } /* end of while loop */
 
