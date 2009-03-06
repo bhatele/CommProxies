@@ -34,7 +34,7 @@
 #define wrap_y(a)	(((a)+num_blocks_y)%num_blocks_y)
 #define calc_pe(a, b)	(a*num_blocks_y + b)
 
-#define MAX_ITER        100
+#define MAX_ITER        25
 #define LEFT            1
 #define RIGHT           2
 #define TOP             3
@@ -121,9 +121,10 @@ int main(int argc, char **argv) {
       temperature[blockDimX][j] = 0.0;
   }
 
-  startTime = MPI_Wtime();
   while(error > 0.001 && iterations < MAX_ITER) {
     iterations++;
+    if(iterations == 5) startTime = MPI_Wtime();
+
     /* Copy left column and right column into temporary arrays */
     double *left_edge_out  = new double[blockDimX];
     double *right_edge_out = new double[blockDimX];
@@ -191,7 +192,7 @@ int main(int argc, char **argv) {
   if(myRank == 0) {
     endTime = MPI_Wtime();
     printf("Completed %d iterations\n", iterations);
-    printf("Time elapsed: %f\n", endTime - startTime);
+    printf("Time elapsed per iteration: %f\n", (endTime - startTime)/(MAX_ITER-5));
   }
 
   MPI_Finalize();
