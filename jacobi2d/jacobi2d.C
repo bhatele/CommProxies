@@ -23,10 +23,10 @@
  *    Y: blockDimY, arrayDimY --> wrap_y
  */
 
+#include "mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "mpi.h"
 
 /* We want to wrap entries around, and because mod operator % 
  * sometimes misbehaves on negative values. -1 maps to the highest value.*/
