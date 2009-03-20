@@ -5,7 +5,7 @@
  * $Revision$
  *****************************************************************************/
 
-/** \file jacobi2d.c
+/** \file jacobi2d.C
  *  Author: Abhinav S Bhatele
  *  Date Created: February 19th, 2009
  *
@@ -26,6 +26,7 @@
 #include "mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
 #include <math.h>
 
 /* We want to wrap entries around, and because mod operator % 
@@ -53,22 +54,33 @@ int main(int argc, char **argv) {
   MPI_Status status[4];
 
   int blockDimX, blockDimY, arrayDimX, arrayDimY;
+  int noBarrier = 0;
 
-  if (argc != 3 && argc != 5) {
-    printf("%s [array_size] [block_size]\n", argv[0]);
-    printf("%s [array_size_X] [array_size_Y] [block_size_X] [block_size_Y]\n", argv[0]);
+  if (argc != 4 && argc != 6) {
+    printf("%s [array_size] [block_size] +[no]barrier\n", argv[0]);
+    printf("%s [array_size_X] [array_size_Y] [block_size_X] [block_size_Y] +[no]barrier\n", argv[0]);
     MPI_Abort(MPI_COMM_WORLD, -1);
   }
 
-  if(argc == 3) {
+  if(argc == 4) {
     arrayDimY = arrayDimX = atoi(argv[1]);
     blockDimY = blockDimX = atoi(argv[2]);
+    if(strcasecmp(argv[3], "+nobarrier") == 0)
+      noBarrier = 1;
+    else
+      noBarrier = 0;
+    if(noBarrier && myRank==0) printf("\nSTENCIL COMPUTATION WITH NO BARRIERS\n");
   }
   else {
     arrayDimX = atoi(argv[1]);
     arrayDimY = atoi(argv[2]);
     blockDimX = atoi(argv[3]);
     blockDimY = atoi(argv[4]);
+    if(strcasecmp(argv[5], "+nobarrier") == 0)
+      noBarrier = 1;
+    else
+      noBarrier = 0;
+    if(noBarrier && myRank==0) printf("\nSTENCIL COMPUTATION WITH NO BARRIERS\n");
   }
 
   if (arrayDimX < blockDimX || arrayDimX % blockDimX != 0) {
@@ -128,7 +140,7 @@ int main(int argc, char **argv) {
   double *left_edge_in   = new double[blockDimX];
   double *right_edge_in  = new double[blockDimX];
 
-  while(error > 0.001 && iterations < MAX_ITER) {
+  while(/*error > 0.001 &&*/ iterations < MAX_ITER) {
     iterations++;
     if(iterations == 5) startTime = MPI_Wtime();
 
@@ -190,7 +202,7 @@ int main(int argc, char **argv) {
     }
 
     // if(myRank == 0) printf("Iteration %d %f %f %f\n", iterations, max_error, temperature[1][1], temperature[1][2]);
-    MPI_Allreduce(&max_error, &error, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    if(noBarrier == 0) MPI_Allreduce(&max_error, &error, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
   } /* end of while loop */
 
   if(myRank == 0) {
