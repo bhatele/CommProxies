@@ -5,21 +5,21 @@
 #include <math.h>
 using namespace std;
 
-#define MAX_ITER        25
+#define MAX_ITER        200
 
 #define NUM_PATCHES	6
-#define MSG_SIZE	2000
+#define MSG_SIZE	1000
 #define COMPUTES_PER_P	9
 
 //determine processor locations of computes to which any given processor will send data
-void determineDest(int myRank, int numDest, int numPes, int numPatches, int numComputes, int pComputes, int *destinations){
+void determineDest(int myRank, int numDest, int numPes, int numPatches, int numComputes, int pComputes, int *destinations, int k){
   //int startPe = numPes - (((numPatches/numPes*pComputes)*myRank + (numPatches/numPes+1)*min(myRank, numPatches % numPes))%numPes);
-  int startPe = (myRank + numPes - numDest/2)%numPes;
+  int startPe = (myRank + numPes*50 - (numDest/2)*k)%numPes;
   int pe = startPe;
   for (int i = 0; i < numDest; i++){
     destinations[i] = pe;
-    pe++;
-    if (pe == numPes) pe = 0;
+    pe+=k;
+    if (pe >= numPes) pe -= numPes;
   }
 }
 
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
   MPI_Status *stat = new MPI_Status[numDest];
   
   //determine locations of computes  
-  determineDest(myRank, numDest, numPes, numPatches, numComputes, pComputes, destinations);
+  determineDest(myRank, numDest, numPes, numPatches, numComputes, pComputes, destinations,3);
   int **recvbuffer = new int*[numDest];
   int **sendbuffer = new int*[numDest];
   for ( int i = 0; i < numDest; i++){
@@ -142,7 +142,37 @@ int main(int argc, char **argv) {
   for (currIter = 0; currIter < iterations; currIter++){
     sendTime += recvfirst(myRank, numDest, numPes, destinations, msgSize, myComputes, recvbuffer, sendbuffer, req, stat);
     if (myRank == 0 && currIter % 20 == 0){
-      printf("%d iterations elapsed, last 20 iterations took %lf seconds, with a total sendTime of %lf\n", currIter, MPI_Wtime() - startTimer, sendTime);
+      printf("k=3 %d iterations elapsed, last 20 iterations took %lf seconds, with a total sendTime of %lf\n", currIter, MPI_Wtime() - startTimer, sendTime);
+      startTimer = MPI_Wtime();
+      sendTime = 0;
+    }
+  }
+  
+
+  determineDest(myRank, numDest, numPes, numPatches, numComputes, pComputes, destinations,5);
+
+  startTimer = MPI_Wtime();
+  sendTime = 0;
+  if (myRank == 0) printf("Doing recvfirst iterations\n");
+  for (currIter = 0; currIter < iterations; currIter++){
+    sendTime += recvfirst(myRank, numDest, numPes, destinations, msgSize, myComputes, recvbuffer, sendbuffer, req, stat);
+    if (myRank == 0 && currIter % 20 == 0){
+      printf("k=5 %d iterations elapsed, last 20 iterations took %lf seconds, with a total sendTime of %lf\n", currIter, MPI_Wtime() - startTimer, sendTime);
+      startTimer = MPI_Wtime();
+      sendTime = 0;
+    }
+  }
+  
+
+  determineDest(myRank, numDest, numPes, numPatches, numComputes, pComputes, destinations,7);
+
+  startTimer = MPI_Wtime();
+  sendTime = 0;
+  if (myRank == 0) printf("Doing recvfirst iterations\n");
+  for (currIter = 0; currIter < iterations; currIter++){
+    sendTime += recvfirst(myRank, numDest, numPes, destinations, msgSize, myComputes, recvbuffer, sendbuffer, req, stat);
+    if (myRank == 0 && currIter % 20 == 0){
+      printf("k=7 %d iterations elapsed, last 20 iterations took %lf seconds, with a total sendTime of %lf\n", currIter, MPI_Wtime() - startTimer, sendTime);
       startTimer = MPI_Wtime();
       sendTime = 0;
     }
