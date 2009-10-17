@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
   MPI_Status *stat = new MPI_Status[numDest];
   
   //determine locations of computes  
-  determineDest(myRank, numDest, numPes, numPatches, numComputes, pComputes, destinations,3);
+  determineDest(myRank, numDest, numPes, numPatches, numComputes, pComputes, destinations,1);
   int **recvbuffer = new int*[numDest];
   int **sendbuffer = new int*[numDest];
   for ( int i = 0; i < numDest; i++){
@@ -126,16 +126,20 @@ int main(int argc, char **argv) {
 
   double startTimer = MPI_Wtime();
   double sendTime = 0;
-  /*if (myRank == 0) printf("Doing loop Irecv Send loop++ iterations\n");
+  startTimer = MPI_Wtime();
+  sendTime = 0;
+  if (myRank == 0) printf("Doing recvfirst iterations\n");
   for (currIter = 0; currIter < iterations; currIter++){
-    sendTime += sendandreceive(myRank, numDest, numPes, destinations, msgSize, myComputes, recvbuffer, sendbuffer, req, stat);
+    sendTime += recvfirst(myRank, numDest, numPes, destinations, msgSize, myComputes, recvbuffer, sendbuffer, req, stat);
     if (myRank == 0 && currIter % 20 == 0){
-      printf("%d iterations elapsed, last 20 iterations took %lf seconds, with a total sendTime of %lf\n", currIter, MPI_Wtime() - startTimer, sendTime);
+      printf("k=1 %d iterations elapsed, last 20 iterations took %lf seconds, with a total sendTime of %lf\n", currIter, MPI_Wtime() - startTimer, sendTime);
       startTimer = MPI_Wtime();
       sendTime = 0;
     }
-  }*/
+  }
   
+
+  determineDest(myRank, numDest, numPes, numPatches, numComputes, pComputes, destinations,3);
   startTimer = MPI_Wtime();
   sendTime = 0;
   if (myRank == 0) printf("Doing recvfirst iterations\n");
