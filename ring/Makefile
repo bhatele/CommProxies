@@ -16,9 +16,14 @@ bigsim:
 	$(CHARMC) allreduce.c -o allr-bg
 	$(CHARMC) ring.c -o ring-bg
 
+proj:
+	$(CHARMC) ring.c -o ring-ampi.prj -tracemode projections
+	$(CHARMC) allreduce.c -o allr-ampi.prj -tracemode projections
+
 test: all
 	./charmrun +p2 ./pgm 100000 16 +vp2
 
 clean:
-	rm -f charmrun conv-host moduleinit* *.o ring-* allr-* *~
+	rm -f charmrun conv-host moduleinit* *.o ring-mpi ring-ampi \
+	ring-bg ring-ampi.prj allr-mpi allr-ampi allr-bg allr-ampi.prj *~
 
