@@ -1,10 +1,9 @@
-/** \file ring.c
+/** \file pingpong.c
  *  Author: Abhinav S Bhatele
- *  Date Created: June 16th, 2009
+ *  Date Created: October 6th, 2010
  *  E-mail: bhatele@illinois.edu
  *
- *  This program performs a ring communication pattern among all processors
- *  for different message sizes.
+ *  This program measures the ping pong latency between two nodes
  */
 
 #include "mpi.h"
@@ -43,40 +42,40 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) {
       // warm-up
       for (i=0; i<2; i++) {
-        MPI_Send(send_buf, msg_size, MPI_CHAR, myrank+1, 999, MPI_COMM_WORLD);
-        MPI_Recv(recv_buf, msg_size, MPI_CHAR, numprocs-1, 999, MPI_COMM_WORLD, &mstat);
+        MPI_Send(send_buf, msg_size, MPI_CHAR, 1, 999, MPI_COMM_WORLD);
+        MPI_Recv(recv_buf, msg_size, MPI_CHAR, 1, 999, MPI_COMM_WORLD, &mstat);
       }
 
       sendTime = MPI_Wtime();
       // if(myrank == 0) BgPrintf("Start of loop at %f \n");
       for (i=0; i<NUM_MSGS; i++) {
-        MPI_Send(send_buf, msg_size, MPI_CHAR, myrank+1, 999, MPI_COMM_WORLD);
-        MPI_Recv(recv_buf, msg_size, MPI_CHAR, numprocs-1, 999, MPI_COMM_WORLD, &mstat);
+        MPI_Send(send_buf, msg_size, MPI_CHAR, 1, 999, MPI_COMM_WORLD);
+        MPI_Recv(recv_buf, msg_size, MPI_CHAR, 1, 999, MPI_COMM_WORLD, &mstat);
       }
       // if(myrank == 0) BgPrintf("End of loop at %f \n");
-      recvTime = (MPI_Wtime() - sendTime) / NUM_MSGS;
+      recvTime = (MPI_Wtime() - sendTime) / (NUM_MSGS * 2);
 
       // cool down
       for (i=0; i<2; i++) {
-        MPI_Send(send_buf, msg_size, MPI_CHAR, myrank+1, 999, MPI_COMM_WORLD);
-        MPI_Recv(recv_buf, msg_size, MPI_CHAR, numprocs-1, 999, MPI_COMM_WORLD, &mstat);
+        MPI_Send(send_buf, msg_size, MPI_CHAR, 1, 999, MPI_COMM_WORLD);
+        MPI_Recv(recv_buf, msg_size, MPI_CHAR, 1, 999, MPI_COMM_WORLD, &mstat);
       }
     } else {
       // warm-up
       for (i=0; i<2; i++) {
-        MPI_Recv(recv_buf, msg_size, MPI_CHAR, myrank-1, 999, MPI_COMM_WORLD, &mstat);
-        MPI_Send(send_buf, msg_size, MPI_CHAR, (myrank+1)%numprocs, 999, MPI_COMM_WORLD);
+        MPI_Recv(recv_buf, msg_size, MPI_CHAR, 0, 999, MPI_COMM_WORLD, &mstat);
+        MPI_Send(send_buf, msg_size, MPI_CHAR, 0, 999, MPI_COMM_WORLD);
       }
 
       for (i=0; i<NUM_MSGS; i++) {
-        MPI_Recv(recv_buf, msg_size, MPI_CHAR, myrank-1, 999, MPI_COMM_WORLD, &mstat);
-        MPI_Send(send_buf, msg_size, MPI_CHAR, (myrank+1)%numprocs, 999, MPI_COMM_WORLD);
+        MPI_Recv(recv_buf, msg_size, MPI_CHAR, 0, 999, MPI_COMM_WORLD, &mstat);
+        MPI_Send(send_buf, msg_size, MPI_CHAR, 0, 999, MPI_COMM_WORLD);
       }
 
       // cool down
       for (i=0; i<2; i++) {
-        MPI_Recv(recv_buf, msg_size, MPI_CHAR, myrank-1, 999, MPI_COMM_WORLD, &mstat);
-        MPI_Send(send_buf, msg_size, MPI_CHAR, (myrank+1)%numprocs, 999, MPI_COMM_WORLD);
+        MPI_Recv(recv_buf, msg_size, MPI_CHAR, 0, 999, MPI_COMM_WORLD, &mstat);
+        MPI_Send(send_buf, msg_size, MPI_CHAR, 0, 999, MPI_COMM_WORLD);
       }
     }
     if(myrank == 0) printf("%d %g\n", msg_size, recvTime);

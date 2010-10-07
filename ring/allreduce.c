@@ -29,6 +29,8 @@ int main(int argc, char *argv[]) {
   int sum = 0, total = 0, i;
   double sendTime, recvTime;
 
+  MPI_Barrier(MPI_COMM_WORLD);
+
   // warm-up
   for (i=0; i<10; i++) {
     MPI_Allreduce(&val, &sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
