@@ -24,7 +24,7 @@
 // Maximum message size (bytes)
 #define MAX_MSG_SIZE (1024 * 1024)
 
-#define NUM_MSGS 10
+#define NUM_MSGS 100
 
 int main(int argc, char *argv[]) {
   int numprocs, myrank, value;
