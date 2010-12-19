@@ -28,7 +28,7 @@
  * sometimes misbehaves on negative values. -1 maps to the highest value.*/
 #define wrap_x(a)	(((a)+num_blocks_x)%num_blocks_x)
 #define wrap_y(a)	(((a)+num_blocks_y)%num_blocks_y)
-#define calc_pe(a, b)	(a*num_blocks_y + b)
+#define calc_pe(a,b)	((a)*num_blocks_y+(b))
 
 #define MAX_ITER        25
 #define LEFT            1
