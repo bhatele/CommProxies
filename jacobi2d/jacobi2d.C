@@ -1,10 +1,3 @@
-/*****************************************************************************
- * $Source$
- * $Author$
- * $Date$
- * $Revision$
- *****************************************************************************/
-
 /** \file jacobi2d.C
  *  Author: Abhinav S Bhatele
  *  Date Created: February 19th, 2009
@@ -21,6 +14,8 @@
  *
  *    X: blockDimX, arrayDimX --> wrap_x
  *    Y: blockDimY, arrayDimY --> wrap_y
+ *
+ *  Two dimensional decomposition of a 2D stencil
  */
 
 #include "mpi.h"
