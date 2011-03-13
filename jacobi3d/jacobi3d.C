@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
 
   if (argc != 4 && argc != 8) {
     printf("%s [array_size] [block_size] +[no]barrier\n", argv[0]);
-    printf("%s [array_size_X] [array_size_Y] [block_size_X] [block_size_Y] +[no]barrier\n", argv[0]);
+    printf("%s [array_size_X] [array_size_Y] [array_size_Z] [block_size_X] [block_size_Y] [block_size_Z] +[no]barrier\n", argv[0]);
     MPI_Abort(MPI_COMM_WORLD, -1);
   }
 
