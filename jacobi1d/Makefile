@@ -1,8 +1,8 @@
 CC=mpicxx -O3
 OPTS=
 LIBS=
-		 
-INCS= 
+
+INCS=
 
 all:jacobi1d
 

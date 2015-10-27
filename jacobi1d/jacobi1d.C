@@ -110,16 +110,16 @@ int main(int argc, char **argv) {
   while(/*error > 0.001 &&*/ iterations < MAX_ITER) {
     iterations++;
 
-    /* Send my top and bottom edge */
-    MPI_Isend(&temperature[1][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank-1), BOTTOM, MPI_COMM_WORLD, &sreq[BOTTOM-1]);
-    MPI_Isend(&temperature[blockDimX][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank+1), TOP, MPI_COMM_WORLD, &sreq[TOP-1]);
-
     /* Receive my bottom and top edge */
     MPI_Irecv(&temperature[blockDimX+1][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank+1), BOTTOM, MPI_COMM_WORLD, &rreq[BOTTOM-1]);
     MPI_Irecv(&temperature[0][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank-1), TOP, MPI_COMM_WORLD, &rreq[TOP-1]);
 
-    MPI_Waitall(2, sreq, MPI_STATUSES_IGNORE);
+    /* Send my top and bottom edge */
+    MPI_Isend(&temperature[1][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank-1), BOTTOM, MPI_COMM_WORLD, &sreq[BOTTOM-1]);
+    MPI_Isend(&temperature[blockDimX][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank+1), TOP, MPI_COMM_WORLD, &sreq[TOP-1]);
+
     MPI_Waitall(2, rreq, MPI_STATUSES_IGNORE);
+    MPI_Waitall(2, sreq, MPI_STATUSES_IGNORE);
 
     for(i=1; i<blockDimX+1; i++) {
       for(j=0; j<arrayDimY; j++) {
