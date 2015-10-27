@@ -30,7 +30,7 @@
 #define wrap_y(a)	(((a)+num_blocks_y)%num_blocks_y)
 #define calc_pe(a,b)	((a)*num_blocks_y+(b))
 
-#define MAX_ITER        25
+#define MAX_ITER        10
 #define LEFT            1
 #define RIGHT           2
 #define TOP             3
@@ -45,8 +45,7 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &numPes);
   MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-  MPI_Request req[4];
-  MPI_Status status[4];
+  MPI_Request sreq[4], rreq[4];
 
   int blockDimX, blockDimY, arrayDimX, arrayDimY;
   int noBarrier = 0;
@@ -135,9 +134,12 @@ int main(int argc, char **argv) {
   double *left_edge_in   = new double[blockDimX];
   double *right_edge_in  = new double[blockDimX];
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Pcontrol(1);
+  startTime = MPI_Wtime();
+
   while(/*error > 0.001 &&*/ iterations < MAX_ITER) {
     iterations++;
-    if(iterations == 5) startTime = MPI_Wtime();
 
     for(i=0; i<blockDimX; i++){
 	left_edge_out[i] = temperature[i+1][1];
@@ -145,19 +147,20 @@ int main(int argc, char **argv) {
     }
 
     /* Receive my right, left, bottom and top edge */
-    MPI_Irecv(right_edge_in, blockDimX, MPI_DOUBLE, calc_pe(myRow, wrap_y(myCol+1)), RIGHT, MPI_COMM_WORLD, &req[RIGHT-1]);
-    MPI_Irecv(left_edge_in, blockDimX, MPI_DOUBLE, calc_pe(myRow, wrap_y(myCol-1)), LEFT, MPI_COMM_WORLD, &req[LEFT-1]);
-    MPI_Irecv(&temperature[blockDimX+1][1], blockDimY, MPI_DOUBLE, calc_pe(wrap_x(myRow+1), myCol), BOTTOM, MPI_COMM_WORLD, &req[BOTTOM-1]);
-    MPI_Irecv(&temperature[0][1], blockDimY, MPI_DOUBLE, calc_pe(wrap_x(myRow-1), myCol), TOP, MPI_COMM_WORLD, &req[TOP-1]);
+    MPI_Irecv(right_edge_in, blockDimX, MPI_DOUBLE, calc_pe(myRow, wrap_y(myCol+1)), RIGHT, MPI_COMM_WORLD, &rreq[RIGHT-1]);
+    MPI_Irecv(left_edge_in, blockDimX, MPI_DOUBLE, calc_pe(myRow, wrap_y(myCol-1)), LEFT, MPI_COMM_WORLD, &rreq[LEFT-1]);
+    MPI_Irecv(&temperature[blockDimX+1][1], blockDimY, MPI_DOUBLE, calc_pe(wrap_x(myRow+1), myCol), BOTTOM, MPI_COMM_WORLD, &rreq[BOTTOM-1]);
+    MPI_Irecv(&temperature[0][1], blockDimY, MPI_DOUBLE, calc_pe(wrap_x(myRow-1), myCol), TOP, MPI_COMM_WORLD, &rreq[TOP-1]);
 
 
     /* Send my left, right, top and bottom edge */
-    MPI_Send(left_edge_out, blockDimX, MPI_DOUBLE, calc_pe(myRow, wrap_y(myCol-1)), RIGHT, MPI_COMM_WORLD);
-    MPI_Send(right_edge_out, blockDimX, MPI_DOUBLE, calc_pe(myRow, wrap_y(myCol+1)), LEFT, MPI_COMM_WORLD);
-    MPI_Send(&temperature[1][1], blockDimY, MPI_DOUBLE, calc_pe(wrap_x(myRow-1), myCol), BOTTOM, MPI_COMM_WORLD);
-    MPI_Send(&temperature[blockDimX][1], blockDimY, MPI_DOUBLE, calc_pe(wrap_x(myRow+1), myCol), TOP, MPI_COMM_WORLD);
+    MPI_Isend(left_edge_out, blockDimX, MPI_DOUBLE, calc_pe(myRow, wrap_y(myCol-1)), RIGHT, MPI_COMM_WORLD, &sreq[RIGHT-1]);
+    MPI_Isend(right_edge_out, blockDimX, MPI_DOUBLE, calc_pe(myRow, wrap_y(myCol+1)), LEFT, MPI_COMM_WORLD, &sreq[LEFT-1]);
+    MPI_Isend(&temperature[1][1], blockDimY, MPI_DOUBLE, calc_pe(wrap_x(myRow-1), myCol), BOTTOM, MPI_COMM_WORLD, &sreq[BOTTOM-1]);
+    MPI_Isend(&temperature[blockDimX][1], blockDimY, MPI_DOUBLE, calc_pe(wrap_x(myRow+1), myCol), TOP, MPI_COMM_WORLD, &sreq[TOP-1]);
 
-    MPI_Waitall(4, req, status);
+    MPI_Waitall(4, rreq, MPI_STATUSES_IGNORE);
+    MPI_Waitall(4, sreq, MPI_STATUSES_IGNORE);
 
     for(i=0; i<blockDimX; i++)
       temperature[i+1][blockDimY+1] = right_edge_in[i];
@@ -200,10 +203,13 @@ int main(int argc, char **argv) {
     if(noBarrier == 0) MPI_Allreduce(&max_error, &error, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
   } /* end of while loop */
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Pcontrol(0);
+
   if(myRank == 0) {
     endTime = MPI_Wtime();
     printf("Completed %d iterations\n", iterations);
-    printf("Time elapsed per iteration: %f\n", (endTime - startTime)/(MAX_ITER-5));
+    printf("Time elapsed per iteration: %f\n", (endTime - startTime)/(MAX_ITER));
   }
 
   MPI_Finalize();
