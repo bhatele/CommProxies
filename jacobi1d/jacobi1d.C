@@ -28,7 +28,7 @@
 #define wrap_x(a)	(((a)+numPes)%numPes)
 #define wrap_y(a)	(((a)+arrayDimY)%arrayDimY)
 
-#define MAX_ITER        100
+#define MAX_ITER        10
 #define TOP             1
 #define BOTTOM          2
 
@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &numPes);
   MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-  MPI_Status status;
+  MPI_Request sreq[2], rreq[2];
 
   int blockDimX, arrayDimX, arrayDimY;
 
@@ -103,17 +103,23 @@ int main(int argc, char **argv) {
       temperature[blockDimX][j] = 0.0;
   }
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Pcontrol(1);
   startTime = MPI_Wtime();
-  while(error > 0.001 && iterations < MAX_ITER) {
+
+  while(/*error > 0.001 &&*/ iterations < MAX_ITER) {
     iterations++;
 
     /* Send my top and bottom edge */
-    MPI_Send(&temperature[1][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank-1), BOTTOM, MPI_COMM_WORLD);
-    MPI_Send(&temperature[blockDimX][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank+1), TOP, MPI_COMM_WORLD);
+    MPI_Isend(&temperature[1][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank-1), BOTTOM, MPI_COMM_WORLD, &sreq[BOTTOM-1]);
+    MPI_Isend(&temperature[blockDimX][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank+1), TOP, MPI_COMM_WORLD, &sreq[TOP-1]);
 
     /* Receive my bottom and top edge */
-    MPI_Recv(&temperature[blockDimX+1][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank+1), BOTTOM, MPI_COMM_WORLD, &status);
-    MPI_Recv(&temperature[0][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank-1), TOP, MPI_COMM_WORLD, &status);
+    MPI_Irecv(&temperature[blockDimX+1][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank+1), BOTTOM, MPI_COMM_WORLD, &rreq[BOTTOM-1]);
+    MPI_Irecv(&temperature[0][0], arrayDimY, MPI_DOUBLE, wrap_x(myRank-1), TOP, MPI_COMM_WORLD, &rreq[TOP-1]);
+
+    MPI_Waitall(2, sreq, MPI_STATUSES_IGNORE);
+    MPI_Waitall(2, rreq, MPI_STATUSES_IGNORE);
 
     for(i=1; i<blockDimX+1; i++) {
       for(j=0; j<arrayDimY; j++) {
@@ -151,6 +157,9 @@ int main(int argc, char **argv) {
 
     MPI_Allreduce(&max_error, &error, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
   } /* end of while loop */
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Pcontrol(0);
 
   if(myRank == 0) {
     endTime = MPI_Wtime();
