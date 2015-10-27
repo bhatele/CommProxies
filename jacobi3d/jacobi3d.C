@@ -36,7 +36,7 @@
 #define index(a,b,c)	((a)+(b)*(blockDimX+2)+(c)*(blockDimX+2)*(blockDimY+2))
 #define calc_pe(a,b,c)	((a)+(b)*num_blocks_x+(c)*num_blocks_x*num_blocks_y)
 
-#define MAX_ITER	25
+#define MAX_ITER	10
 #define LEFT		1
 #define RIGHT		2
 #define TOP		3
@@ -54,8 +54,7 @@ int main(int argc, char **argv) {
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &numPes);
   MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
-  MPI_Request req[6];
-  MPI_Status status[6];
+  MPI_Request sreq[6], rreq[6];
 
   int blockDimX, blockDimY, blockDimZ;
   int arrayDimX, arrayDimY, arrayDimZ;
@@ -163,9 +162,12 @@ int main(int argc, char **argv) {
   double *back_plane_in     = new double[blockDimX*blockDimY];
   double *front_plane_in    = new double[blockDimX*blockDimY];
 
+  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Pcontrol(1);
+  startTime = MPI_Wtime();
+
   while(/*error > 0.001 &&*/ iterations < MAX_ITER) {
     iterations++;
-    if(iterations == 5) startTime = MPI_Wtime();
 
     /* Copy different planes into buffers */
     for(k=0; k<blockDimZ; ++k)
@@ -187,23 +189,24 @@ int main(int argc, char **argv) {
       }
 
     /* Receive my right, left, top, bottom, back and front planes */
-    MPI_Irecv(right_plane_in, blockDimY*blockDimZ, MPI_DOUBLE, calc_pe(wrap_x(myXcoord+1), myYcoord, myZcoord), RIGHT, MPI_COMM_WORLD, &req[RIGHT-1]);
-    MPI_Irecv(left_plane_in, blockDimY*blockDimZ, MPI_DOUBLE, calc_pe(wrap_x(myXcoord-1), myYcoord, myZcoord), LEFT, MPI_COMM_WORLD, &req[LEFT-1]);
-    MPI_Irecv(top_plane_in, blockDimX*blockDimZ, MPI_DOUBLE, calc_pe(myXcoord, wrap_y(myYcoord+1), myZcoord), TOP, MPI_COMM_WORLD, &req[TOP-1]);
-    MPI_Irecv(bottom_plane_in, blockDimX*blockDimZ, MPI_DOUBLE, calc_pe(myXcoord, wrap_y(myYcoord-1), myZcoord), BOTTOM, MPI_COMM_WORLD, &req[BOTTOM-1]);
-    MPI_Irecv(front_plane_in, blockDimX*blockDimY, MPI_DOUBLE, calc_pe(myXcoord, myYcoord, wrap_z(myZcoord+1)), FRONT, MPI_COMM_WORLD, &req[FRONT-1]);
-    MPI_Irecv(back_plane_in, blockDimX*blockDimY, MPI_DOUBLE, calc_pe(myXcoord, myYcoord, wrap_z(myZcoord-1)), BACK, MPI_COMM_WORLD, &req[BACK-1]);
+    MPI_Irecv(right_plane_in, blockDimY*blockDimZ, MPI_DOUBLE, calc_pe(wrap_x(myXcoord+1), myYcoord, myZcoord), RIGHT, MPI_COMM_WORLD, &rreq[RIGHT-1]);
+    MPI_Irecv(left_plane_in, blockDimY*blockDimZ, MPI_DOUBLE, calc_pe(wrap_x(myXcoord-1), myYcoord, myZcoord), LEFT, MPI_COMM_WORLD, &rreq[LEFT-1]);
+    MPI_Irecv(top_plane_in, blockDimX*blockDimZ, MPI_DOUBLE, calc_pe(myXcoord, wrap_y(myYcoord+1), myZcoord), TOP, MPI_COMM_WORLD, &rreq[TOP-1]);
+    MPI_Irecv(bottom_plane_in, blockDimX*blockDimZ, MPI_DOUBLE, calc_pe(myXcoord, wrap_y(myYcoord-1), myZcoord), BOTTOM, MPI_COMM_WORLD, &rreq[BOTTOM-1]);
+    MPI_Irecv(front_plane_in, blockDimX*blockDimY, MPI_DOUBLE, calc_pe(myXcoord, myYcoord, wrap_z(myZcoord+1)), FRONT, MPI_COMM_WORLD, &rreq[FRONT-1]);
+    MPI_Irecv(back_plane_in, blockDimX*blockDimY, MPI_DOUBLE, calc_pe(myXcoord, myYcoord, wrap_z(myZcoord-1)), BACK, MPI_COMM_WORLD, &rreq[BACK-1]);
 
 
     /* Send my left, right, bottom, top, front and back planes */
-    MPI_Send(left_plane_out, blockDimY*blockDimZ, MPI_DOUBLE, calc_pe(wrap_x(myXcoord-1), myYcoord, myZcoord), RIGHT, MPI_COMM_WORLD);
-    MPI_Send(right_plane_out, blockDimY*blockDimZ, MPI_DOUBLE, calc_pe(wrap_x(myXcoord+1), myYcoord, myZcoord), LEFT, MPI_COMM_WORLD);
-    MPI_Send(bottom_plane_out, blockDimX*blockDimZ, MPI_DOUBLE, calc_pe(myXcoord, wrap_y(myYcoord-1), myZcoord), TOP, MPI_COMM_WORLD);
-    MPI_Send(top_plane_out, blockDimX*blockDimZ, MPI_DOUBLE, calc_pe(myXcoord, wrap_y(myYcoord+1), myZcoord), BOTTOM, MPI_COMM_WORLD);
-    MPI_Send(back_plane_out, blockDimX*blockDimY, MPI_DOUBLE, calc_pe(myXcoord, myYcoord, wrap_z(myZcoord-1)), FRONT, MPI_COMM_WORLD);
-    MPI_Send(front_plane_out, blockDimX*blockDimY, MPI_DOUBLE, calc_pe(myXcoord, myYcoord, wrap_z(myZcoord+1)), BACK, MPI_COMM_WORLD);
+    MPI_Isend(left_plane_out, blockDimY*blockDimZ, MPI_DOUBLE, calc_pe(wrap_x(myXcoord-1), myYcoord, myZcoord), RIGHT, MPI_COMM_WORLD, &sreq[RIGHT-1]);
+    MPI_Isend(right_plane_out, blockDimY*blockDimZ, MPI_DOUBLE, calc_pe(wrap_x(myXcoord+1), myYcoord, myZcoord), LEFT, MPI_COMM_WORLD, &sreq[LEFT-1]);
+    MPI_Isend(bottom_plane_out, blockDimX*blockDimZ, MPI_DOUBLE, calc_pe(myXcoord, wrap_y(myYcoord-1), myZcoord), TOP, MPI_COMM_WORLD, &sreq[TOP-1]);
+    MPI_Isend(top_plane_out, blockDimX*blockDimZ, MPI_DOUBLE, calc_pe(myXcoord, wrap_y(myYcoord+1), myZcoord), BOTTOM, MPI_COMM_WORLD, &sreq[BOTTOM-1]);
+    MPI_Isend(back_plane_out, blockDimX*blockDimY, MPI_DOUBLE, calc_pe(myXcoord, myYcoord, wrap_z(myZcoord-1)), FRONT, MPI_COMM_WORLD, &sreq[FRONT-1]);
+    MPI_Isend(front_plane_out, blockDimX*blockDimY, MPI_DOUBLE, calc_pe(myXcoord, myYcoord, wrap_z(myZcoord+1)), BACK, MPI_COMM_WORLD, &sreq[BACK-1]);
 
-    MPI_Waitall(6, req, status);
+    MPI_Waitall(6, rreq, MPI_STATUSES_IGNORE);
+    MPI_Waitall(6, sreq, MPI_STATUSES_IGNORE);
 
     /* Copy buffers into ghost layers */
     for(k=0; k<blockDimZ; ++k)
@@ -274,6 +277,9 @@ int main(int argc, char **argv) {
     // if(myRank == 0) printf("Iteration %d %f\n", iterations, max_error);
     if(noBarrier == 0) MPI_Allreduce(&max_error, &error, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
   } /* end of while loop */
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Pcontrol(0);
 
   if(myRank == 0) {
     endTime = MPI_Wtime();
